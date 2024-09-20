@@ -1,9 +1,11 @@
 import shutil
+import os
+import argparse
 from datetime import datetime
 from pathlib import Path
 
 from copy_utils import custom_copy
-from upload_drive import *
+from upload_drive import upload_file, check_and_fetch_env_vars
 
 
 def validate_folder(folder):
@@ -99,7 +101,7 @@ def segregate_files_into_online_offline_backup(input_folder: str, file_size_limi
             is_restricted_file = False
             # Files ending in these extensions are subject to the lower 20 MB limit, instead of file_size_limit
             restricted_extensions = [".mp4", ".mkv", ".h5", ".weights"]
-            if restricted_extensions == 1 and any(
+            if restrict_certain_file_sizes == 1 and any(
                     x in src_filename for x in restricted_extensions) and file_size_mb > 20:
                 is_restricted_file = True
 
