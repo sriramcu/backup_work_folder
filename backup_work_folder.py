@@ -3,6 +3,7 @@ import os
 import argparse
 from datetime import datetime
 from pathlib import Path
+import time
 
 from copy_utils import custom_copy
 from upload_drive import upload_file, check_and_fetch_env_vars
@@ -171,10 +172,11 @@ def main():
                         help="Specify whether to skip offline backup, default:%(default)s")
     parser.add_argument("-r", type=int, choices=[0, 1], default=1,
                         help="Specify whether to restrict file sizes for certain file types to 20 MB, default:%(default)s")
-
     args = vars(parser.parse_args())
-
+    start_time = time.time()
     backup_folder(args["d"], args["fl"], args["ol"], args["m"], args["s"], args["r"])
+    execution_time = time.time() - start_time
+    print(f"Execution time: {execution_time:.2f} seconds")
 
 
 if __name__ == "__main__":
