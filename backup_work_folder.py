@@ -9,29 +9,32 @@ from upload_drive import upload_file, check_and_fetch_env_vars
 
 
 def validate_folder(folder):
+    """
+    Checks if folder exists
+    """
     if not os.path.isdir(folder):
         raise FileNotFoundError(f"No such directory: {folder}")
 
 
 def backup_folder(folder, file_size_limit, overall_online_limit, max_files_per_dir, skip_offline_backup,
                   restrict_certain_file_sizes):
+    """
+        1. Use os walk to traverse every file in work dir
+        2. If file is too big or belongs to a folder containing too many files, the filename is logged to offline_backup_files.txt (gitignored)
+           Maintaining the same folder structure, this file is copied into offline backup folder, sibling to WORK_DIR
+        3. Else copy to online backup folder which will later be zipped and uploaded to google drive
+        4. Copy bashrc into online backup folder.
+        5. Zip both backup folders and upload the online zip to google drive.
+        6. Check if online zip exceeds file size limit, default 3 gb. If so throw an error that this program needs to be modified to become more selective.
+        7. Upload zip file. Change folder id to that of new folder created in drive. Delete pre existing backup folders. Check for drive free space
+        8. Remove files and folders created by the program on the local system.
+    """
     folder = os.path.abspath(folder)
     validate_folder(folder)
     dst_folder_id, offline_backup_dst_folder = check_and_fetch_env_vars(strict=True)[1:3]
-    validate_folder(offline_backup_dst_folder)
+    if not skip_offline_backup:
+        validate_folder(offline_backup_dst_folder)
 
-    """
-    Logic :-
-    1. Use os walk to traverse every file in work dir
-    2. If file is too big or belongs to a folder containing too many files, the filename is logged to offline_backup_files.txt (gitignored)
-       Maintaining the same folder structure, this file is copied into offline backup folder, sibling to WORK_DIR
-    3. Else copy to online backup folder which will later be zipped and uploaded to google drive
-    4. Copy bashrc into online backup folder.
-    5. Zip both backup folders and upload the online zip to google drive.
-    6. Check if online zip exceeds file size limit, default 3 gb. If so throw an error that this program needs to be modified to become more selective.
-    7. Upload zip file. Change folder id to that of new folder created in drive. Delete pre existing backup folders. Check for drive free space
-    8. Remove files and folders created by the program on the local system.
-    """
     parent_folder = Path(folder).resolve().parent
     dt_string = datetime.now().strftime("%d_%m_%Y_%H_%M")  # append to both zips
     online_backup_folder = os.path.join(parent_folder, f"{os.path.basename(folder)}_online_backup")
@@ -80,6 +83,18 @@ def get_file_size_mb(filepath):
 def segregate_files_into_online_offline_backup(input_folder: str, file_size_limit: int, max_files_per_dir: int,
                                                skip_offline_backup: int, offline_backup_folder: str,
                                                online_backup_folder: str, restrict_certain_file_sizes: int):
+    """
+    Segregate files into online and offline backups, refer README for conditions that can be specified on cmd line
+    Parameters
+    ----------
+    input_folder: Work Folder to be backed up
+    file_size_limit: (MB) Each individual file or sum of nested sizes in git or virtualenv folders
+    max_files_per_dir: Maximum number of files allowed in each directory for online backup
+    skip_offline_backup
+    offline_backup_folder: Temporary folder for offline backup files before moving to the location defined in .env
+    online_backup_folder: Temporary folder for online backup files before being zipped and uploaded to drive
+    restrict_certain_file_sizes
+    """
     count = 0
     offline_backed_up_files = []
     files_per_path = {}  # stores no. of files in each path in input_folder, key is slash separated
@@ -125,9 +140,18 @@ def segregate_files_into_online_offline_backup(input_folder: str, file_size_limi
     return offline_backed_up_files, count
 
 def recursive_file_size_check(path, file_size_limit, delimiter):
+    """
+    If the total size of all files recursively in the git dir is greater than the normal individual file_size_limit,
+    return True to tell the caller that the folder should be skipped
+
+    Parameters
+    ----------
+    path: Full path to be checked, part of this path contains the delimiter
+    file_size_limit: Normal individual file size limit
+    delimiter: .git or venv (virtualenv folder name defiled in .env, fetched by caller)
+    """
     if delimiter in path:
         path_upto_git = path.partition(delimiter)[0]
-        # If the total size of all files recursively in the git dir is greater than the normal individual file_size_limit, skip it
         if sum(f.stat().st_size for f in Path(path_upto_git).glob('**/*') if f.is_file()) / (
                 1 << 20) > file_size_limit:
             return True

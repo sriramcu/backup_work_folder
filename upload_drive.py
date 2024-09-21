@@ -20,7 +20,7 @@ DEFAULT_DRIVE_FOLDER_ID = ""
 
 
 def trash_file(service, file_id):
-    """Move a file to the trash.
+    """Move a file in Google Drive to the trash.
 
     Args:
       service: Drive API service instance.
@@ -97,6 +97,13 @@ def _print_file_size(filepath: str):
 
 
 def get_credentials():
+    """
+    Reads credentials.json stored in directory defined in .env, throws an error if not found
+    On first execution opens a browser to allow the user to login, thereby generating token.pickle which stores the
+    user's access and refresh tokens for subsequent program runs
+
+    Returns credentials object that can be used to access Drive APIs
+    """
     token_pickle_filepath = os.path.join(WORK_DIR, "token.pickle")
     credentials_json_filepath = os.path.join(WORK_DIR, "credentials.json")
     if not os.path.isfile(credentials_json_filepath):
@@ -140,6 +147,9 @@ def check_and_fetch_env_vars(strict=False):
     Function that checks whether all environment variables needed by the program are stored in the .env file
     If so, these environment variables are stored in global variables and returned as a list
 
+    Args:
+        strict (bool, optional): Whether to raise an error if environment variables for offline backup and venv folder name
+         are not defined. Defaults to False since we don't need these for uploading individual files
     Returns:
         list: List [WORK_DIR, DEFAULT_DRIVE_FOLDER_ID, WORK_BACKUP, venv_folder_name]
         of the environment variables fetched from .env file
