@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 import time
 
-from copy_utils import custom_copy
+from common_utils import custom_copy, get_file_size_mb
 from upload_drive import upload_file, check_and_fetch_env_vars
 
 
@@ -75,10 +75,6 @@ def backup_folder(folder, file_size_limit, overall_online_limit, max_files_per_d
     Path(offline_backup_zip).unlink(missing_ok=True)
     Path(online_backup_zip).unlink(missing_ok=True)
     print("Program completed successfully. Reminder to delete the older zip file in your google drive.")
-
-
-def get_file_size_mb(filepath):
-    return os.path.getsize(filepath) / (1 << 20)
 
 
 def segregate_files_into_online_offline_backup(input_folder: str, file_size_limit: int, max_files_per_dir: int,

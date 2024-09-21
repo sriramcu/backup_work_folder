@@ -2,9 +2,6 @@ import os
 import shutil
 import sys
 
-import backup_work_folder
-
-
 def progress_percentage(perc, width=None):
     # This will only work for python 3.3+ due to use of
     # os.get_terminal_size the print function etc.
@@ -124,7 +121,7 @@ def custom_copy(src, dst):
     if not os.path.isfile(src):
         raise FileNotFoundError(src)
 
-    file_size = backup_work_folder.get_file_size_mb(src)
+    file_size = get_file_size_mb(src)
     if  file_size > 200:
         print(f"Large File {src} - {file_size} MB is being copied, please wait...")
         copy_with_progress(src, dst)
@@ -132,6 +129,10 @@ def custom_copy(src, dst):
 
     else:
         shutil.copy(src, dst)
+
+
+def get_file_size_mb(filepath):
+    return os.path.getsize(filepath) / (1 << 20)
 
 
 if __name__ == "__main__":

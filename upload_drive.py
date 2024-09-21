@@ -12,6 +12,8 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
+from common_utils import get_file_size_mb
+
 # If modifying these scopes, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/drive']
 WORK_BACKUP = ""
@@ -92,8 +94,8 @@ def upload_file(filepath_argument: str, delete_existing, destination_drive_folde
 
 
 def _print_file_size(filepath: str):
-    file_size = os.path.getsize(filepath)
-    print("File Size is :", round(file_size / (1024 * 1024), 2), "MB")
+    file_size = get_file_size_mb(filepath)
+    print(f"File Size is : {round(file_size, 2)} MB")
 
 
 def get_credentials():
