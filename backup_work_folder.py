@@ -96,7 +96,9 @@ def segregate_files_into_online_offline_backup(input_folder: str, file_size_limi
             if path not in files_per_path:
                 files_per_path[path] = len(os.listdir(path))
 
-            is_git_dir = fun(path, file_size_limit, ".git") and fun(path, file_size_limit, check_and_fetch_env_vars(strict=True)[3])
+            # If the total size of all files recursively in the git dir is greater than the normal individual file_size_limit, skip it
+            excluded_venv_dir = check_and_fetch_env_vars(strict=True)[3]
+            is_git_venv_dir = recursive_file_size_check(path, file_size_limit, ".git") or recursive_file_size_check(path, file_size_limit, excluded_venv_dir)
 
             is_restricted_file = False
             # Files ending in these extensions are subject to the lower 20 MB limit, instead of file_size_limit
@@ -106,7 +108,7 @@ def segregate_files_into_online_offline_backup(input_folder: str, file_size_limi
                 is_restricted_file = True
 
             if file_size_mb > file_size_limit or files_per_path[
-                path] > max_files_per_dir or is_git_dir or is_restricted_file:
+                path] > max_files_per_dir or is_git_venv_dir or is_restricted_file:
                 offline_backed_up_files.append(src_filepath)
                 os.makedirs(os.path.join(offline_backup_folder, subfolder_wrt_input_root), exist_ok=True)
                 custom_copy(src_filepath, os.path.join(offline_backup_folder, subfolder_wrt_input_root, src_filename))
@@ -122,10 +124,10 @@ def segregate_files_into_online_offline_backup(input_folder: str, file_size_limi
                 print(f"{count} files processed")
     return offline_backed_up_files, count
 
-def fun(path, file_size_limit, delimiter):
+def recursive_file_size_check(path, file_size_limit, delimiter):
     if delimiter in path:
         path_upto_git = path.partition(delimiter)[0]
-        # If the total size of all files recursively in the git dir is greater than file_size_limit, skip it
+        # If the total size of all files recursively in the git dir is greater than the normal individual file_size_limit, skip it
         if sum(f.stat().st_size for f in Path(path_upto_git).glob('**/*') if f.is_file()) / (
                 1 << 20) > file_size_limit:
             return True
