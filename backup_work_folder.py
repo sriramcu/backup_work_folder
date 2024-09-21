@@ -1,6 +1,7 @@
 import shutil
 import os
 import argparse
+import stat
 from datetime import datetime
 from pathlib import Path
 import time
@@ -16,6 +17,10 @@ def validate_folder(folder):
     if not os.path.isdir(folder):
         raise FileNotFoundError(f"No such directory: {folder}")
     return True
+
+def remove_readonly(func, path, excinfo):
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
 
 
 def backup_folder(folder, file_size_limit, overall_online_limit, max_files_per_dir, skip_offline_backup,
@@ -42,8 +47,8 @@ def backup_folder(folder, file_size_limit, overall_online_limit, max_files_per_d
     online_backup_folder = os.path.join(parent_folder, f"{os.path.basename(folder)}_online_backup")
     online_backup_zip = os.path.join(parent_folder, f"{dt_string}_{os.path.basename(folder)}_online_backup.zip")
     offline_backup_folder = os.path.join(parent_folder, f"{os.path.basename(folder)}_offline_backup")
-    print("Deleting pre-existing backup folders...")
-    shutil.rmtree(online_backup_folder, ignore_errors=True)
+    print(f"Deleting pre-existing backup folders...{online_backup_folder} and {offline_backup_folder}")
+    shutil.rmtree(online_backup_folder, ignore_errors=True, onerror=remove_readonly)
     shutil.rmtree(offline_backup_folder, ignore_errors=True)
     print("Successfully removed!")
 
@@ -74,7 +79,7 @@ def backup_folder(folder, file_size_limit, overall_online_limit, max_files_per_d
 
     print("Removing backup zip file and folders")
     Path(online_backup_zip).unlink(missing_ok=True)
-    shutil.rmtree(online_backup_folder, ignore_errors=True)
+    shutil.rmtree(online_backup_folder, ignore_errors=True, onerror=remove_readonly)
     shutil.rmtree(offline_backup_folder, ignore_errors=True)
     print("Program completed successfully. Reminder to delete the older zip file in your google drive (and offline).")
 
@@ -202,7 +207,7 @@ def main():
     backup_folder(args["d"], args["fl"], args["ol"], args["m"], args["s"], args["r"])
     minutes, seconds = divmod(time.time() - start_time, 60)
     execution_time = f"{minutes:.0f} minutes and {seconds:.2f} seconds"
-    print(f"Execution time: {execution_time:.2f}")
+    print(f"Execution time: {execution_time}")
 
 
 if __name__ == "__main__":
