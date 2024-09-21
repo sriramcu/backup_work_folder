@@ -81,7 +81,7 @@ def backup_folder(folder, file_size_limit, overall_online_limit, max_files_per_d
     Path(online_backup_zip).unlink(missing_ok=True)
     shutil.rmtree(online_backup_folder, ignore_errors=True, onerror=remove_readonly)
     shutil.rmtree(offline_backup_folder, ignore_errors=True)
-    print("Program completed successfully. Reminder to delete the older zip file in your google drive (and offline).")
+    print("Program completed successfully. Reminder to delete the older zip file in your google drive (and offline backup).")
 
 
 def belongs_to(path, excluded_full_path):
