@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 import time
 
-from common_utils import custom_copy, get_file_size_mb
+from common_utils import custom_copy, get_file_size_mb, move_folder
 from upload_drive import upload_file, check_and_fetch_env_vars
 
 
@@ -15,6 +15,7 @@ def validate_folder(folder):
     """
     if not os.path.isdir(folder):
         raise FileNotFoundError(f"No such directory: {folder}")
+    return True
 
 
 def backup_folder(folder, file_size_limit, overall_online_limit, max_files_per_dir, skip_offline_backup,
@@ -41,7 +42,6 @@ def backup_folder(folder, file_size_limit, overall_online_limit, max_files_per_d
     online_backup_folder = os.path.join(parent_folder, f"{os.path.basename(folder)}_online_backup")
     online_backup_zip = os.path.join(parent_folder, f"{dt_string}_{os.path.basename(folder)}_online_backup.zip")
     offline_backup_folder = os.path.join(parent_folder, f"{os.path.basename(folder)}_offline_backup")
-    offline_backup_zip = os.path.join(parent_folder, f"{os.path.basename(folder)}_offline_backup_{dt_string}.zip")
     print("Deleting pre-existing backup folders...")
     shutil.rmtree(online_backup_folder, ignore_errors=True)
     shutil.rmtree(offline_backup_folder, ignore_errors=True)
@@ -52,29 +52,40 @@ def backup_folder(folder, file_size_limit, overall_online_limit, max_files_per_d
                                                                                 offline_backup_folder,
                                                                                 online_backup_folder,
                                                                                 restrict_certain_file_sizes)
+    print(f"Totally {count} files have been segregated.")
 
-    print(f"Totally {count} files have been copied.")
-    # Now all files have been copied to either online or offline backups. Now zip them and upload the online backup zip
+    print("Moving offline backup folder...")
+    if not skip_offline_backup and validate_folder(offline_backup_folder):
+        list_offline_files = open(os.path.join(Path(__file__).resolve().parent, "offline_backup_files.txt"), 'w')
+        for f in offline_backed_up_files:
+            list_offline_files.write(f + '\n')
+        list_offline_files.close()
+        move_folder(offline_backup_folder, offline_backup_dst_folder)
+        upload_file(list_offline_files.name, 1, dst_folder_id, report_free_space=True)
+    print("Entire offline backup process completed.")
+
+    print("Zipping online backup...")
     shutil.make_archive(online_backup_zip.split(".")[-2], 'zip', online_backup_folder)
+    print("Zipping completed")
     if get_file_size_mb(online_backup_zip) > overall_online_limit:
         raise ValueError(f"Online backup zip file is too large ({os.path.getsize(online_backup_zip) / (1 << 20)} MB) to be uploaded. \
             Please tighten online backup criteria")
     upload_file(online_backup_zip, 0, dst_folder_id, report_free_space=True)
 
-    if not skip_offline_backup and validate_folder(offline_backup_folder):
-        shutil.make_archive(offline_backup_zip.split(".")[-2], 'zip', offline_backup_folder)
-    list_offline_files = open(os.path.join(Path(__file__).resolve().parent, "offline_backup_files.txt"), 'w')
-    for f in offline_backed_up_files:
-        list_offline_files.write(f + '\n')
-    list_offline_files.close()
-    if not skip_offline_backup:
-        print("Copying offline backup zip...")
-        custom_copy(offline_backup_zip, os.path.join(offline_backup_dst_folder, os.path.basename(offline_backup_zip)))
-
-    print("Removing both backup zip files")
-    Path(offline_backup_zip).unlink(missing_ok=True)
+    print("Removing backup zip file and folders")
     Path(online_backup_zip).unlink(missing_ok=True)
-    print("Program completed successfully. Reminder to delete the older zip file in your google drive.")
+    shutil.rmtree(online_backup_folder, ignore_errors=True)
+    shutil.rmtree(offline_backup_folder, ignore_errors=True)
+    print("Program completed successfully. Reminder to delete the older zip file in your google drive (and offline).")
+
+
+def belongs_to(path, excluded_full_path):
+    """
+    Returns true if path equals to or is a subdirectory of excluded_full_path
+    """
+    if path == excluded_full_path or Path(excluded_full_path).resolve() in Path(path).resolve().parents:
+        return True
+    return False
 
 
 def segregate_files_into_online_offline_backup(input_folder: str, file_size_limit: int, max_files_per_dir: int,
@@ -92,6 +103,15 @@ def segregate_files_into_online_offline_backup(input_folder: str, file_size_limi
     online_backup_folder: Temporary folder for online backup files before being zipped and uploaded to drive
     restrict_certain_file_sizes
     """
+    try:
+        from secret_constants import excluded_dirs, restricted_extensions, restricted_max_file_size_mb
+    except ImportError:
+        # default values if secret_constants.py isn't in the project's root dir
+        excluded_dirs = [".git"]
+        restricted_extensions = [".mp4", ".mkv", ".h5", ".weights"]
+        restricted_max_file_size_mb = 20
+
+    excluded_dir_full_paths = [] # stores abspath of folders excluded, to prevent running glob on their subfolders
     count = 0
     offline_backed_up_files = []
     files_per_path = {}  # stores no. of files in each path in input_folder, key is slash separated
@@ -109,17 +129,17 @@ def segregate_files_into_online_offline_backup(input_folder: str, file_size_limi
                 files_per_path[path] = len(os.listdir(path))
 
             # If the total size of all files recursively in the git dir is greater than the normal individual file_size_limit, skip it
-            try:
-                from secret_constants import excluded_dirs, restricted_extensions, restricted_max_file_size_mb
-            except ImportError:
-                # default values if secret_constants.py isn't in the project's root dir
-                excluded_dirs = [".git"]
-                restricted_extensions = [".mp4", ".mkv", ".h5", ".weights"]
-                restricted_max_file_size_mb = 20
-
             is_excluded_dir = False
-            for excluded_dir in excluded_dirs:
-                is_excluded_dir = recursive_file_size_check(path, file_size_limit, excluded_dir)
+            if any(belongs_to(path, excluded_full_path) for excluded_full_path in excluded_dir_full_paths):
+                # if path is the subdir of a full path already excluded via glob, directly exclude this file
+                is_excluded_dir = True
+            else:
+                for excluded_dir in excluded_dirs:
+                    is_excluded_dir = recursive_file_size_check(path, file_size_limit, excluded_dir)
+                    if is_excluded_dir:
+                        excluded_dir_full_paths.append(path)
+                        print(f"Files under {path} excluded from online backup")
+                        break
 
             is_restricted_file = False
             # Files ending in restricted_extensions are subject to the lower restricted_max_file_size_mb limit,
@@ -180,8 +200,9 @@ def main():
     args = vars(parser.parse_args())
     start_time = time.time()
     backup_folder(args["d"], args["fl"], args["ol"], args["m"], args["s"], args["r"])
-    execution_time = time.time() - start_time
-    print(f"Execution time: {execution_time:.2f} seconds")
+    minutes, seconds = divmod(time.time() - start_time, 60)
+    execution_time = f"{minutes:.0f} minutes and {seconds:.2f} seconds"
+    print(f"Execution time: {execution_time:.2f}")
 
 
 if __name__ == "__main__":

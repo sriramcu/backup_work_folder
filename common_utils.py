@@ -1,6 +1,8 @@
 import os
 import shutil
 import sys
+from pathlib import Path
+
 
 def progress_percentage(perc, width=None):
     # This will only work for python 3.3+ due to use of
@@ -130,6 +132,13 @@ def custom_copy(src, dst):
     else:
         shutil.copy(src, dst)
 
+def move_folder(src_folder, dest_folder):
+    src_folder = Path(src_folder)
+    dest_folder = Path(dest_folder)
+    # Ensure the destination folder exists
+    dest_folder.mkdir(parents=True, exist_ok=True)
+    # Move the source folder into the destination folder
+    shutil.move(str(src_folder), str(dest_folder / src_folder.name))
 
 def get_file_size_mb(filepath):
     return os.path.getsize(filepath) / (1 << 20)
