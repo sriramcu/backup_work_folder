@@ -1,6 +1,7 @@
 import os
 import shutil
 import sys
+from datetime import datetime
 from pathlib import Path
 
 
@@ -132,13 +133,14 @@ def custom_copy(src, dst):
     else:
         shutil.copy(src, dst)
 
-def move_folder(src_folder, dest_folder):
+def move_folder_with_sandwiched_timestamp(src_folder, dest_folder):
     src_folder = Path(src_folder)
     dest_folder = Path(dest_folder)
-    # Ensure the destination folder exists
-    dest_folder.mkdir(parents=True, exist_ok=True)
-    # Move the source folder into the destination folder
-    shutil.move(str(src_folder), str(dest_folder / src_folder.name))
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # Create the timestamp folder inside the destination folder
+    timestamp_folder = dest_folder / timestamp
+    timestamp_folder.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(src_folder), str(timestamp_folder / src_folder.name))
 
 def get_file_size_mb(filepath):
     return os.path.getsize(filepath) / (1 << 20)

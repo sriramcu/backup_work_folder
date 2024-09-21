@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 import time
 
-from common_utils import custom_copy, get_file_size_mb, move_folder
+from common_utils import custom_copy, get_file_size_mb, move_folder_with_sandwiched_timestamp
 from upload_drive import upload_file, check_and_fetch_env_vars
 
 
@@ -60,7 +60,7 @@ def backup_folder(folder, file_size_limit, overall_online_limit, max_files_per_d
         for f in offline_backed_up_files:
             list_offline_files.write(f + '\n')
         list_offline_files.close()
-        move_folder(offline_backup_folder, offline_backup_dst_folder)
+        move_folder_with_sandwiched_timestamp(offline_backup_folder, offline_backup_dst_folder)
         upload_file(list_offline_files.name, 1, dst_folder_id, report_free_space=True)
     print("Entire offline backup process completed.")
 
