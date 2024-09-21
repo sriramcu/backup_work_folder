@@ -1,7 +1,7 @@
-# backup_work_folder
+# Selectively Backup Folder to Google Drive
 
 Have you ever been in a situation where you 
-wanted to backup your work folder to google drive? 
+wanted to backup your work or coding folder to google drive? 
 
 Currently you would have to manually go through your folder, copy files that are small 
 enough to be backed up online to a separate folder and exclude the large ones. You 
