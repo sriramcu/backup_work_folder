@@ -1,2 +1,3 @@
 .env
 offline_backup_files.txt
+secret_constants.py

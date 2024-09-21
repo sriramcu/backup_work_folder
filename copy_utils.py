@@ -2,6 +2,8 @@ import os
 import shutil
 import sys
 
+import backup_work_folder
+
 
 def progress_percentage(perc, width=None):
     # This will only work for python 3.3+ due to use of
@@ -109,7 +111,7 @@ def copy_with_progress(src, dst, *, follow_symlinks=True):
 
 def custom_copy(src, dst):
     """
-    Copy file from src to dst. If src is larger than 1GB, it will be copied
+    Copy file from src to dst. If src is larger than 0.2 GB, it will be copied
     with a progress bar. Otherwise, shutil.copy is used.
 
     Parameters
@@ -122,8 +124,9 @@ def custom_copy(src, dst):
     if not os.path.isfile(src):
         raise FileNotFoundError(src)
 
-    if os.path.getsize(src) / (1 << 20) > 1000:
-        print(f"Large File {src} is being copied, please wait...")
+    file_size = backup_work_folder.get_file_size_mb(src)
+    if  file_size > 200:
+        print(f"Large File {src} - {file_size} MB is being copied, please wait...")
         copy_with_progress(src, dst)
         print("\nCopied.")
 

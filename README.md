@@ -41,7 +41,6 @@ most ".git" or virtualenv folders.
    * WORK_DIR="\<full path of the folder in which credentials.json and token.pickle are>"
    * DEFAULT_DRIVE_FOLDER_ID="\<alphanumeric id of destination gdrive folder>"
    * WORK_BACKUP="\<full path of folder in which large files backed up offline are>"
-   * VENV_FOLDER_NAME="\<Name of virtual environment folder for python, eg-'venv'>"
 
 ## Usage
 
@@ -80,17 +79,20 @@ applied.
 
 ## Additional Information
 1. Type-specific file size restrictions, if enabled, will apply a stricter individual 
-   file size limit of 20 MB to files with the following extensions: [".mp4", ".mkv", ".h5", ".weights"]
+   file size limit of 20 MB to files with the following extensions: [".mp4", ".mkv", ".
+   h5", ".weights"]. This can be configured using secret constants as mentioned in 
+   point number 3.
 2. The property specifying maximum number of files in a directory (-m) is meant to 
    exclude 
    folders like "train/cat" containing 500 cat images, etc.
-3. Code automatically handles excluding ".git" (harcoded) and "venv" (defined in 
-   VENV_FOLDER_NAME 
-   property in .env
-   ) folders from the 
+3. Code automatically handles excluding ".git" (harcoded) folders from the 
    backup, in 
    cases where the sum of file sizes of all nested files and subfolders of these 
    folders exceeds the normal individual file size limit (-fl). This property cannot 
-   be configured on the command line, except by modifying "-fl".
+   be configured on the command line, except by modifying "-fl". It can instead be 
+   configured by creating a module called "secret_constants.py" where we define 
+   excluded_dirs (list of str- [".git", "venv", etc]), restricted_extensions (list of 
+   str), 
+   restricted_max_file_size_mb (int)
 4. To upload individual files, follow setup instructions and then directly use `python 
-upload_drive.py path/to/file.txt`
+upload_drive.py -f path/to/file.txt`

@@ -148,8 +148,8 @@ def check_and_fetch_env_vars(strict=False):
     If so, these environment variables are stored in global variables and returned as a list
 
     Args:
-        strict (bool, optional): Whether to raise an error if environment variables for offline backup and venv folder name
-         are not defined. Defaults to False since we don't need these for uploading individual files
+        strict (bool, optional): Whether to raise an error if environment variable for offline backup is not defined.
+        Defaults to False since we don't need it for uploading individual files
     Returns:
         list: List [WORK_DIR, DEFAULT_DRIVE_FOLDER_ID, WORK_BACKUP, venv_folder_name]
         of the environment variables fetched from .env file
@@ -159,12 +159,11 @@ def check_and_fetch_env_vars(strict=False):
     WORK_DIR = os.getenv("WORK_DIR")
     DEFAULT_DRIVE_FOLDER_ID = os.getenv("DEFAULT_DRIVE_FOLDER_ID")
     WORK_BACKUP = os.getenv("WORK_BACKUP")
-    venv_folder_name = os.getenv("VENV_FOLDER_NAME")
     if None in (WORK_DIR, DEFAULT_DRIVE_FOLDER_ID):
         raise ValueError("Environment variables not defined")
-    if strict and None in (WORK_BACKUP, venv_folder_name):
-        raise ValueError("Environment variables not defined")
-    return [WORK_DIR, DEFAULT_DRIVE_FOLDER_ID, WORK_BACKUP, venv_folder_name]
+    if strict and WORK_BACKUP is None:
+        raise ValueError("Environment variable for offline work backup not defined")
+    return [WORK_DIR, DEFAULT_DRIVE_FOLDER_ID, WORK_BACKUP]
 
 
 def main():

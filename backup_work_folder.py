@@ -32,7 +32,7 @@ def backup_folder(folder, file_size_limit, overall_online_limit, max_files_per_d
     """
     folder = os.path.abspath(folder)
     validate_folder(folder)
-    dst_folder_id, offline_backup_dst_folder = check_and_fetch_env_vars(strict=True)[1:3]
+    dst_folder_id, offline_backup_dst_folder = check_and_fetch_env_vars(strict=True)[1:]
     if not skip_offline_backup:
         validate_folder(offline_backup_dst_folder)
 
@@ -113,18 +113,27 @@ def segregate_files_into_online_offline_backup(input_folder: str, file_size_limi
                 files_per_path[path] = len(os.listdir(path))
 
             # If the total size of all files recursively in the git dir is greater than the normal individual file_size_limit, skip it
-            excluded_venv_dir = check_and_fetch_env_vars(strict=True)[3]
-            is_git_venv_dir = recursive_file_size_check(path, file_size_limit, ".git") or recursive_file_size_check(path, file_size_limit, excluded_venv_dir)
+            try:
+                from secret_constants import excluded_dirs, restricted_extensions, restricted_max_file_size_mb
+            except ImportError:
+                # default values if secret_constants.py isn't in the project's root dir
+                excluded_dirs = [".git"]
+                restricted_extensions = [".mp4", ".mkv", ".h5", ".weights"]
+                restricted_max_file_size_mb = 20
+
+            is_excluded_dir = False
+            for excluded_dir in excluded_dirs:
+                is_excluded_dir = recursive_file_size_check(path, file_size_limit, excluded_dir)
 
             is_restricted_file = False
-            # Files ending in these extensions are subject to the lower 20 MB limit, instead of file_size_limit
-            restricted_extensions = [".mp4", ".mkv", ".h5", ".weights"]
+            # Files ending in restricted_extensions are subject to the lower restricted_max_file_size_mb limit,
+            # instead of file_size_limit
             if restrict_certain_file_sizes == 1 and any(
-                    x in src_filename for x in restricted_extensions) and file_size_mb > 20:
+                    x in src_filename for x in restricted_extensions) and file_size_mb > restricted_max_file_size_mb:
                 is_restricted_file = True
 
             if file_size_mb > file_size_limit or files_per_path[
-                path] > max_files_per_dir or is_git_venv_dir or is_restricted_file:
+                path] > max_files_per_dir or is_excluded_dir or is_restricted_file:
                 offline_backed_up_files.append(src_filepath)
                 os.makedirs(os.path.join(offline_backup_folder, subfolder_wrt_input_root), exist_ok=True)
                 custom_copy(src_filepath, os.path.join(offline_backup_folder, subfolder_wrt_input_root, src_filename))
